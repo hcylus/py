@@ -24,9 +24,11 @@ b.已存在.crtconf文件（全局会话目录设置未修改过情况）使用�
 目的：最大化使用用户偏好本地设置，减少脚本硬编程，灵活迁移，无需太多依赖
 '''
 
-import os
+import os, time
 import platform, subprocess
 from ConfigParser import ConfigParser
+# from multiprocessing import Pool,Manager
+from multiprocessing import Pool, Manager
 
 giturl = 'https://github.com/hcylus/crt.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
@@ -62,20 +64,45 @@ else:
 s = cf.get('global', 'cnfdir')
 sessiondir = os.path.join(s, 'Sessions')
 os.chdir(sessiondir)
-if os.path.exists(gitrepo):
-    os.chdir(gitrepo)
-    print 'clean local files and pull files from git'
-    subprocess.check_call(gitclean, shell=True)
-    subprocess.check_call(gitfetch, shell=True)
-    subprocess.check_call(gitreset, shell=True)
-    subprocess.check_call(gitpull, shell=True)
-else:
-    subprocess.check_call(gitclone, shell=True)
 
-for dirpath, dirnames, filenames in os.walk(sessiondir):
-    for fname in filenames:
-        if fname == '__FolderData__.ini':
-            print os.path.join(dirpath, fname)
+
+def putsession(q):
+    if os.path.exists(os.path.join(sessiondir, gitrepo)):
+        os.chdir(os.path.join(sessiondir, gitrepo))
+        print 'clean local files and pull files from git'
+        # subprocess.check_call(gitclean, shell=True)
+        # subprocess.check_call(gitfetch, shell=True)
+        # subprocess.check_call(gitreset, shell=True)
+        # subprocess.check_call(gitpull, shell=True)
+    else:
+        subprocess.check_call(gitclone, shell=True)
+
+    for dirpath, dirnames, filenames in os.walk(os.path.join(sessiondir, gitrepo)):
+        for fname in filenames:
+            if os.path.splitext(fname)[1] == '.ini':
+                if fname != '__FolderData__.ini':
+                    q.put(os.path.join(dirpath, fname))
+
+
+def getsession(q):
+    print q.qsize()
+    while 1:
+        if not q.empty():
+            values = q.get()
+            print values
         else:
-            pass
-            # print os.path.join(dirpath,fname)
+            break
+
+
+if __name__ == "__main__":
+    q = Manager().Queue()
+    p = Pool()
+    putsession(q)
+    start = time.time()
+    # wp = p.apply_async(putsession, args=(q,))
+    rp = p.apply_async(getsession, args=(q,))
+    # getsession(q)
+    p.close()
+    p.join()
+    end = time.time()
+    print 'COST: {}'.format(end - start)
