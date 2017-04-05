@@ -25,12 +25,21 @@ b.已存在.crtconf文件（全局会话目录设置未修改过情况）使用�
 '''
 
 import os
-import platform
+import platform, subprocess
 from ConfigParser import ConfigParser
+
+giturl = 'https://github.com/hcylus/crt.git'
+gitrepo = giturl.split('/')[-1].split('.')[0]
+gitclone = 'git clone ' + giturl
+gitfetch = 'git fetch --all'
+gitreset = 'git reset --hard origin/master'
+gitclean = 'git clean -df'
+gitpull = 'git pull'
 
 if platform.system() == 'Darwin':
     user_profile = os.getenv('HOME')
-    crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
+    # crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
+    crt_defcnfdir = os.path.join(user_profile, 'tx')
 elif platform.system() == 'Windows':
     user_profile = os.getenv('USERPROFILE')
     user_appdata = os.getenv('APPDATA')
@@ -50,4 +59,23 @@ else:
     cf.set('global', 'cnfdir', crt_cnfdir)
     cf.write(open(crt_cnf, 'w+'))
 
-print cf.get('global', 'cnfdir')
+s = cf.get('global', 'cnfdir')
+sessiondir = os.path.join(s, 'Sessions')
+os.chdir(sessiondir)
+if os.path.exists(gitrepo):
+    os.chdir(gitrepo)
+    print 'clean local files and pull files from git'
+    subprocess.check_call(gitclean, shell=True)
+    subprocess.check_call(gitfetch, shell=True)
+    subprocess.check_call(gitreset, shell=True)
+    subprocess.check_call(gitpull, shell=True)
+else:
+    subprocess.check_call(gitclone, shell=True)
+
+for dirpath, dirnames, filenames in os.walk(sessiondir):
+    for fname in filenames:
+        if fname == '__FolderData__.ini':
+            print os.path.join(dirpath, fname)
+        else:
+            pass
+            # print os.path.join(dirpath,fname)
