@@ -28,7 +28,8 @@ from urllib2 import urlopen
 
 citime = time.strftime('%Y%m%d%H%m')
 
-giturl = 'https://luhaichuan@git.digi-sky.com/rs/crt_ses.git'
+# giturl = 'https://git.digi-sky.com/rs/crt_ses.git'
+giturl = 'git@git.digi-sky.com:rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
@@ -39,7 +40,7 @@ gitadd = 'git add *'
 gitci = 'git commit -m' + '\'' + citime + ' update' + '\''
 gitdir = os.path.join(os.getenv('HOME'), gitrepo)
 
-svndir = os.path.join(os.getenv('HOME'), 'crt_all')
+svndir = os.path.join(os.getenv('HOME'), 'crt_all/')
 svnurl = 'http://192.168.2.60:8080/svn/crt_all/'
 cmdburl = 'http://192.168.20.250/ssh_session/update_svn'
 svncmd = 'svn co ' + svnurl + ' --username yw'
@@ -47,7 +48,6 @@ svnup = 'svn update'
 svnclean = 'svn st | grep \'^?\' | awk \'{print $2}\' | xargs rm -rf'
 
 rsyncmd = 'rsync -av --exclude \'.svn\' --exclude \'__FolderData__.ini\' ' + svndir + ' ' + gitdir
-
 
 def cmdbupdate(func):
     def _cmdbupdate():
@@ -67,9 +67,7 @@ def cmdbupdate(func):
             print('访问更新cmdb到svn的url失败!')
             # return False
             func()
-
     return _cmdbupdate
-
 
 @cmdbupdate
 def svnupdate():
@@ -80,7 +78,6 @@ def svnupdate():
         subprocess.check_call(svnup, shell=True)
     else:
         subprocess.check_call(svncmd, shell=True)
-
 
 def gitupdate(func):
     def _gitupdate():
@@ -94,9 +91,7 @@ def gitupdate(func):
         else:
             subprocess.check_call(gitclone, shell=True)
             func()
-
     return _gitupdate
-
 
 @gitupdate
 def gitpush():
@@ -106,7 +101,6 @@ def gitpush():
     subprocess.check_call(gitadd, shell=True)
     subprocess.check_call(gitci, shell=True)
     subprocess.check_call('git push', shell=True)
-
 
 svnupdate()
 gitpush()

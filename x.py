@@ -27,10 +27,9 @@ b.已存在.crtconf文件（全局会话目录设置未修改过情况）使用�
 import os, time
 import platform, subprocess
 from ConfigParser import ConfigParser
-# from multiprocessing import Pool,Manager
 from multiprocessing import Pool, Manager
 
-giturl = 'https://github.com/hcylus/crt.git'
+giturl = 'https://git.digi-sky.com/rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
@@ -70,9 +69,9 @@ def putsession(q):
     if os.path.exists(os.path.join(sessiondir, gitrepo)):
         os.chdir(os.path.join(sessiondir, gitrepo))
         print 'clean local files and pull files from git'
-        # subprocess.check_call(gitclean, shell=True)
-        # subprocess.check_call(gitfetch, shell=True)
-        # subprocess.check_call(gitreset, shell=True)
+        subprocess.check_call(gitclean, shell=True)
+        subprocess.check_call(gitfetch, shell=True)
+        subprocess.check_call(gitreset, shell=True)
         # subprocess.check_call(gitpull, shell=True)
     else:
         subprocess.check_call(gitclone, shell=True)
@@ -89,7 +88,7 @@ def getsession(q):
     while 1:
         if not q.empty():
             values = q.get()
-            print values
+            # print values
         else:
             break
 
@@ -106,3 +105,16 @@ if __name__ == "__main__":
     p.join()
     end = time.time()
     print 'COST: {}'.format(end - start)
+
+
+    # 精确提取IP
+    # result = re.findall(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b", string_ip):
+    # if result:
+    #     print result
+    # else:
+    #     print "re cannot find ip"
+
+    # 提取IPv6，例子里大小写不敏感
+    # result = re.findall(r"(?<![:.\w])(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}(?![:.\w])", string_IPv6, re.I)
+    # 打印提取结果
+    # print result
