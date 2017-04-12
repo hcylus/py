@@ -26,8 +26,9 @@ b.已存在.crtconf文件（全局会话目录设置未修改过情况）使用�
 
 import os, time
 import platform, subprocess
-from ConfigParser import ConfigParser
+import re
 from multiprocessing import Pool, Manager
+from ConfigParser import ConfigParser
 
 giturl = 'https://git.digi-sky.com/rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
@@ -35,7 +36,11 @@ gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
 gitreset = 'git reset --hard origin/master'
 gitclean = 'git clean -df'
-gitpull = 'git pull'
+# gitpull = 'git pull'
+host = re.compile(
+    r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))')
+host_pre = re.compile(r'.*"Hostname"=')
+
 
 if platform.system() == 'Darwin':
     user_profile = os.getenv('HOME')
@@ -89,6 +94,18 @@ def getsession(q):
         if not q.empty():
             values = q.get()
             # print values
+            with open(values, 'r') as f:
+                # print type(f)
+                # print f.read()
+                hostip = host.search(f.read()).group()
+                t = open(os.path.join(sessiondir, 'Default.ini'), 'r')
+                tmp = re.sub(host_pre, hostip, t.read())
+                x = open(values, 'w')
+                x.write(tmp)
+                x.close()
+                # print f.read()
+                # print host_pre.search(f.read()).group()
+                # f.close()
         else:
             break
 
