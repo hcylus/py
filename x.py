@@ -24,24 +24,30 @@ b.已存在.crtconf文件（全局会话目录设置未修改过情况）使用�
 目的：最大化使用用户偏好本地设置，减少脚本硬编程，灵活迁移，无需太多依赖
 '''
 
-import os, time
+import os, sys
+import argparse
 import platform, subprocess
 import re
 from multiprocessing import Pool, Manager
 from ConfigParser import ConfigParser
 
+# 定义队列，将session文件存入队列，以便进程池获取
+q = Manager().Queue()
+
+# git相关变量设置
 giturl = 'https://git.digi-sky.com/rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
 gitreset = 'git reset --hard origin/master'
 gitclean = 'git clean -df'
-# gitpull = 'git pull'
+
+# 匹配ini文件里主机ip
 host = re.compile(
     r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))')
 host_pre = re.compile(r'.*"Hostname"=')
 
-
+# 操作系统版本判断，并获取默认session存放路径
 if platform.system() == 'Darwin':
     user_profile = os.getenv('HOME')
     # crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
@@ -51,10 +57,16 @@ elif platform.system() == 'Windows':
     user_appdata = os.getenv('APPDATA')
     crt_defcnfdir = os.path.join(user_appdata, 'VanDyke', 'Config')
 
-## 通过sys.argv参数是否存在判断使用默认配置还是新配置
-crt_cnfdir = crt_defcnfdir
+# 通过判断脚本是否带参来更新默认session存放路径
+parser = argparse.ArgumentParser(description='configuration session path')
+parser.add_argument('-u', '--update', dest='sessiondir', metavar='path', action='store', type=str,
+                    help='set session path', default=crt_defcnfdir)
+parserargs = parser.parse_args()
+crt_cnfdir = parserargs.sessiondir
+print crt_cnfdir
 crt_cnf = os.path.join(user_profile, '.crtcnf')
 
+# 更新session存放路径
 cf = ConfigParser()
 if not os.path.exists(crt_cnf):
     cf.add_section('global')
@@ -67,19 +79,32 @@ else:
 
 s = cf.get('global', 'cnfdir')
 sessiondir = os.path.join(s, 'Sessions')
-os.chdir(sessiondir)
 
+try:
+    os.chdir(sessiondir)
+except OSError, e:
+    print e
+    print 'set session path error !!!'
+    sys.exit(1)
 
 def putsession(q):
     if os.path.exists(os.path.join(sessiondir, gitrepo)):
-        os.chdir(os.path.join(sessiondir, gitrepo))
-        print 'clean local files and pull files from git'
-        subprocess.check_call(gitclean, shell=True)
-        subprocess.check_call(gitfetch, shell=True)
-        subprocess.check_call(gitreset, shell=True)
-        # subprocess.check_call(gitpull, shell=True)
+        try:
+            os.chdir(os.path.join(sessiondir, gitrepo))
+            subprocess.check_call(gitclean, shell=True)
+            subprocess.check_call(gitfetch, shell=True)
+            subprocess.check_call(gitreset, shell=True)
+        # except subprocess.CalledProcessError, e:
+        except:
+            # print e
+            # print 'install git'
+            sys.exit(1)
     else:
-        subprocess.check_call(gitclone, shell=True)
+        try:
+            subprocess.check_call(gitclone, shell=True)
+        except subprocess.CalledProcessError, e:
+            print e
+            sys.exit(1)
 
     for dirpath, dirnames, filenames in os.walk(os.path.join(sessiondir, gitrepo)):
         for fname in filenames:
@@ -87,51 +112,30 @@ def putsession(q):
                 if fname != '__FolderData__.ini':
                     q.put(os.path.join(dirpath, fname))
 
-
 def getsession(q):
-    print q.qsize()
-    while 1:
-        if not q.empty():
-            values = q.get()
-            # print values
-            with open(values, 'r') as f:
-                # print type(f)
-                # print f.read()
-                hostip = host.search(f.read()).group()
-                t = open(os.path.join(sessiondir, 'Default.ini'), 'r')
-                tmp = re.sub(host_pre, hostip, t.read())
-                x = open(values, 'w')
-                x.write(tmp)
-                x.close()
-                # print f.read()
-                # print host_pre.search(f.read()).group()
-                # f.close()
-        else:
-            break
+    num = q.qsize()
+    with open(os.path.join(sessiondir, 'Default.ini'), 'r') as sestemplate:
+        while 1:
+            if not q.empty():
+                value = q.get()
+                with open(value, 'r') as sourceini:
+                    hostip = host.search(sourceini.read()).group()
+                    tmpini = re.sub(host_pre, hostip, sestemplate.read())
+                    destini = open(value, 'w')
+                    destini.write(tmpini)
+                    destini.close()
+            else:
+                break
+
+        print 'format session nums: ', num
 
 
 if __name__ == "__main__":
-    q = Manager().Queue()
+    # 定义进程池
     p = Pool()
     putsession(q)
-    start = time.time()
+    # 队列写入使用单进程
     # wp = p.apply_async(putsession, args=(q,))
     rp = p.apply_async(getsession, args=(q,))
-    # getsession(q)
     p.close()
     p.join()
-    end = time.time()
-    print 'COST: {}'.format(end - start)
-
-
-    # 精确提取IP
-    # result = re.findall(r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b", string_ip):
-    # if result:
-    #     print result
-    # else:
-    #     print "re cannot find ip"
-
-    # 提取IPv6，例子里大小写不敏感
-    # result = re.findall(r"(?<![:.\w])(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}(?![:.\w])", string_IPv6, re.I)
-    # 打印提取结果
-    # print result
