@@ -43,14 +43,15 @@ gitclean = 'git clean -df'
 
 # 匹配ini文件里主机ip
 host = re.compile(
-    r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))')
+    r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))' + os.linesep)
 host_pre = re.compile(r'.*"Hostname"=')
 
 # 操作系统版本判断，并获取默认session存放路径
 global user_profile, crt_defcnfdir
 if platform.system() == 'Darwin':
     user_profile = os.getenv('HOME')
-    crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
+    # crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
+    crt_defcnfdir = os.path.join(user_profile, 'tx')
 elif platform.system() == 'Windows':
     user_profile = os.getenv('USERPROFILE')
     user_appdata = os.getenv('APPDATA')
@@ -80,7 +81,8 @@ sessiondir = os.path.join(s, 'Sessions')
 
 try:
     os.chdir(sessiondir)
-except (OSError, WindowsError) as e:
+# except (OSError, WindowsError) as e:
+except OSError as e:
     print(e)
     print('session path %s set error ,please check !!!' % crt_cnfdir)
     sys.exit(1)
@@ -112,20 +114,45 @@ def putsession(q):
 
 def getsession(q):
     num = q.qsize()
+    unmatch_host = []
     print('Format %d sessions ,please waiting ....' % num)
+    '''
+    处理不同操作系统换行符问题
+    python2 (可用os.linesep获取操作系统换行符)
+    1）如果不是txt文件，建议用wb和rb来读写。通过二进制读写，不会有换行问题。
+    2）如果需要明文内容，请用rU来读取（强烈推荐），即U通用换行模式（Universal new line mode）。该模式会把所有的换行符（\r \n \r\n）替换为\n。只支持读入
+
+    Python3
+    可以通过open函数的newline参数来控制Universal new line mode：
+    读取时候，不指定newline，则默认开启Universal new line mode，所有\n, \r, or \r\n被默认转换为\n ；
+    写入时，不指定newline，则换行符为各系统默认的换行符（\n, \r, or \r\n, ），指定为newline='\n'，则都替换为\n（相当于Universal new line mode）；
+    不论读或者写时，newline=''都表示不转换。
+
+    '''
     with open(os.path.join(sessiondir, 'Default.ini'), 'r') as sestemplate:
         sestempini = sestemplate.read()
         while 1:
             if not q.empty():
                 value = q.get()
                 with open(value, 'r') as sourceini:
-                    hostip = host.search(sourceini.read()).group()
-                    tmpini = re.sub(host_pre, hostip, sestempini)
-                    destini = open(value, 'w')
-                    destini.write(tmpini)
-                    destini.close()
+                    try:
+                        hostip = host.search(sourceini.read()).group()
+                    except AttributeError as e:
+                        # print e
+                        unmatch_host.append(value)
+                    else:
+                        tmpini = re.sub(host_pre, hostip, sestempini)
+                        destini = open(value, 'w')
+                        destini.write(tmpini)
+                        destini.close()
             else:
                 break
+
+    len_unhost = len(unmatch_host)
+    if unmatch_host:
+        for unhost in unmatch_host:
+            print(unhost)
+        print('Unformat hosts nums %d please check config file' % len_unhost)
 
 if __name__ == "__main__":
     # 此处的freeze_support用于解决Windows下多进程异常问题
