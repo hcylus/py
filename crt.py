@@ -43,7 +43,7 @@ gitclean = 'git clean -df'
 
 # 匹配ini文件里主机ip
 host = re.compile(
-    r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))' + os.linesep)
+    r'(.*"Hostname"=)((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))\n')
 host_pre = re.compile(r'.*"Hostname"=')
 
 # 操作系统版本判断，并获取默认session存放路径
@@ -115,7 +115,7 @@ def putsession(q):
 def getsession(q):
     num = q.qsize()
     unmatch_host = []
-    print('Format %d sessions ,please waiting ....' % num)
+    # print('Format %d sessions ,please waiting ....' % num)
     '''
     处理不同操作系统换行符问题
     python2 (可用os.linesep获取操作系统换行符)
@@ -152,7 +152,9 @@ def getsession(q):
     if unmatch_host:
         for unhost in unmatch_host:
             print(unhost)
-        print('Unformat hosts nums %d please check config file' % len_unhost)
+        print('Unformat session nums: %d\nPlease check session file' % len_unhost)
+
+    print 'Format session nums: {}'.format(num - len_unhost)
 
 if __name__ == "__main__":
     # 此处的freeze_support用于解决Windows下多进程异常问题
