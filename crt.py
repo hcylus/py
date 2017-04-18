@@ -124,7 +124,6 @@ def putsession(q):
 def getsession(q):
     num = q.qsize()
     unmatch_host = []
-    # print('Format %d sessions ,please waiting ....' % num)
     '''
     处理不同操作系统换行符问题
     python2 (可用os.linesep获取操作系统换行符)
@@ -147,9 +146,9 @@ def getsession(q):
                     try:
                         hostip = host.search(sourceini.read()).group()
                     except AttributeError as e:
-                        # print e
                         unmatch_host.append(value)
                     else:
+                        hostip = hostip.replace('\n', '')
                         tmpini = re.sub(host_pre, hostip, sestempini)
                         destini = open(value, 'w')
                         destini.write(tmpini)
