@@ -31,6 +31,12 @@ import re
 from multiprocessing import Pool, Manager, freeze_support
 from ConfigParser import ConfigParser
 
+try:
+    reload(sys)
+    sys.setdefaultencoding('utf8')
+except:
+    pass
+
 start = time.time()
 
 # git相关变量设置
