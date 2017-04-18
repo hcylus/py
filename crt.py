@@ -16,9 +16,9 @@ from __future__ import unicode_literals
 '''
 描述：脚本主要用于处理SecureCrt会话文件，从而解决重复手动修改每个会话配置
 处理逻辑：
-1.带参数运行：参数用于设置会话保存目录（可从软件全局选项里找到路径，将此路径赋值于变量），生成或更新变量保存文件（默认用户目录.crtconfig）
+1.带参数运行：参数用于设置会话保存目录（可从软件全局选项里找到路径，将此路径赋值于变量），生成或更新变量保存文件（默认用户目录下.crtconfig文件）
 2.不带参数运行：
-a.脚本里硬编程SecureCrt默认会话保存目录（按默认配置生成crtcnf）
+a.采用SecureCrt默认会话保存目录（按默认配置生成crtcnf文件）
 b.已存在crtconf文件（会话目录设置未修改过情况），使用crtconf文件参数
 依赖：所有会话文件生成都依赖全局默认Default.ini会话文件
 目的：使用用户偏好设置，减少脚本硬编程，跨版本、跨平台，无需太多依赖
@@ -47,11 +47,10 @@ host = re.compile(
 host_pre = re.compile(r'.*"Hostname"=')
 
 # 操作系统版本判断，并获取默认session存放路径
-global user_profile, crt_defcnfdir
+global user_profile, crt_defcnfdir, crt_cnfdir
 if platform.system() == 'Darwin':
     user_profile = os.getenv('HOME')
-    # crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
-    crt_defcnfdir = os.path.join(user_profile, 'tx')
+    crt_defcnfdir = os.path.join(user_profile, 'Library', 'Application Support', 'VanDyke', 'SecureCRT', 'Config')
 elif platform.system() == 'Windows':
     user_profile = os.getenv('USERPROFILE')
     user_appdata = os.getenv('APPDATA')
@@ -60,21 +59,31 @@ elif platform.system() == 'Windows':
 # 通过判断脚本是否带参来更新默认session存放路径
 parser = argparse.ArgumentParser(description='configuration session path')
 parser.add_argument('-u', '--update', dest='sessiondir', metavar='path', action='store', type=str,
-                    help='set session path', default=crt_defcnfdir)
-parserargs = parser.parse_args()
-crt_cnfdir = parserargs.sessiondir
-crt_cnf = os.path.join(user_profile, '.crtcnf')
+                    help='set session path')
 
 # 更新session存放路径
+parserargs = parser.parse_args()
+crt_cnf = os.path.join(user_profile, '.crtcnf')
 cf = ConfigParser()
-if not os.path.exists(crt_cnf):
-    cf.add_section('global')
-    cf.set('global', 'cnfdir', crt_cnfdir)
-    cf.write(open(crt_cnf, 'w+'))
+
+if not parserargs.sessiondir:
+    if not os.path.exists(crt_cnf):
+        crt_cnfdir = crt_defcnfdir
+        cf.add_section('global')
+        cf.set('global', 'cnfdir', crt_cnfdir)
+        cf.write(open(crt_cnf, 'w+'))
+    else:
+        cf.read(crt_cnf)
 else:
-    cf.read(crt_cnf)
-    cf.set('global', 'cnfdir', crt_cnfdir)
-    cf.write(open(crt_cnf, 'w+'))
+    crt_cnfdir = parserargs.sessiondir
+    if not os.path.exists(crt_cnf):
+        cf.add_section('global')
+        cf.set('global', 'cnfdir', crt_cnfdir)
+        cf.write(open(crt_cnf, 'w+'))
+    else:
+        cf.read(crt_cnf)
+        cf.set('global', 'cnfdir', crt_cnfdir)
+        cf.write(open(crt_cnf, 'w+'))
 
 s = cf.get('global', 'cnfdir')
 sessiondir = os.path.join(s, 'Sessions')
@@ -129,12 +138,12 @@ def getsession(q):
     不论读或者写时，newline=''都表示不转换。
 
     '''
-    with open(os.path.join(sessiondir, 'Default.ini'), 'r') as sestemplate:
+    with open(os.path.join(sessiondir, 'Default.ini'), 'rU') as sestemplate:
         sestempini = sestemplate.read()
         while 1:
             if not q.empty():
                 value = q.get()
-                with open(value, 'r') as sourceini:
+                with open(value, 'rU') as sourceini:
                     try:
                         hostip = host.search(sourceini.read()).group()
                     except AttributeError as e:
@@ -152,7 +161,7 @@ def getsession(q):
     if unmatch_host:
         for unhost in unmatch_host:
             print(unhost)
-        print('Unformat session nums: %d\nPlease check session file' % len_unhost)
+        print('Unformat session nums: %d\nPlease check Unformat files' % len_unhost)
 
     print 'Format session nums: {}'.format(num - len_unhost)
 
