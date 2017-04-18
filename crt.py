@@ -25,7 +25,7 @@ b.已存在crtconf文件（会话目录设置未修改过情况），使用crtco
 '''
 
 import os, sys, time
-import argparse
+import argparse, codecs
 import platform, subprocess
 import re
 from multiprocessing import Pool, Manager, freeze_support
@@ -79,9 +79,15 @@ if not parserargs.sessiondir:
         cf.set('global', 'cnfdir', crt_cnfdir)
         cf.write(open(crt_cnf, 'w+'))
     else:
-        cf.read(crt_cnf)
+        cf.readfp(codecs.open(crt_cnf, 'r', 'utf8'))
 else:
     crt_cnfdir = parserargs.sessiondir
+    if platform.system() != 'Windows':
+        crt_cnfdir = crt_cnfdir.decode('utf8')
+    else:
+        # 将gbk编码解码为Unicode,此处用解决Windows(默认编码gbk)平台输入中文参数无法写入crtcnf文件问题
+        crt_cnfdir = crt_cnfdir.decode('gbk')
+
     if not os.path.exists(crt_cnf):
         cf.add_section('global')
         cf.set('global', 'cnfdir', crt_cnfdir)
