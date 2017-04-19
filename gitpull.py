@@ -28,8 +28,8 @@ from urllib2 import urlopen
 
 citime = time.strftime('%Y%m%d%H%m')
 
-# giturl = 'https://git.digi-sky.com/rs/crt_ses.git'
-giturl = 'git@git.digi-sky.com:rs/crt_ses.git'
+giturl = 'git@git.digi-sky.com:ops/crt_ses.git'
+# giturl='git@git.digi-sky.com:rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
@@ -37,7 +37,7 @@ gitreset = 'git reset --hard origin/master'
 gitclean = 'git clean -df'
 # gitpull = 'git pull'
 gitadd = 'git add *'
-gitci = 'git commit -m' + '\'' + citime + ' update' + '\''
+gitci = 'git commit -a -m' + '\'' + citime + ' update' + '\''
 gitdir = os.path.join(os.getenv('HOME'), gitrepo)
 
 svndir = os.path.join(os.getenv('HOME'), 'crt_all/')
@@ -47,7 +47,7 @@ svncmd = 'svn co ' + svnurl + ' --username yw'
 svnup = 'svn update'
 svnclean = 'svn st | grep \'^?\' | awk \'{print $2}\' | xargs rm -rf'
 
-rsyncmd = 'rsync -av --exclude \'.svn\' --exclude \'__FolderData__.ini\' ' + svndir + ' ' + gitdir
+rsyncmd = 'rsync -av --exclude \'.gitignore\' --exclude \'.svn\' --exclude \'.git\' --exclude \'__FolderData__.ini\' --delete ' + svndir + ' ' + gitdir
 
 def cmdbupdate(func):
     def _cmdbupdate():
