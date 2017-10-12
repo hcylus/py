@@ -40,7 +40,7 @@ except:
 start = time.time()
 
 # git相关变量设置
-giturl = 'ssh://git@code.digi-sky.com:30022/ops/crt_ses.git'
+giturl = 'https://code.digi-sky.com/ops/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
 gitfetch = 'git fetch --all'
