@@ -28,7 +28,7 @@ from urllib2 import urlopen
 
 citime = time.strftime('%Y%m%d%H%m')
 
-giturl = 'git@git.digi-sky.com:ops/crt_ses.git'
+giturl = 'ssh://git@code.digi-sky.com:30022/ops/crt_ses.git'
 # giturl='git@git.digi-sky.com:rs/crt_ses.git'
 gitrepo = giturl.split('/')[-1].split('.')[0]
 gitclone = 'git clone ' + giturl
